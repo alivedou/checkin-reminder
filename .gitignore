@@ -1,0 +1,14 @@
+node_modules/
+dist/
+web/node_modules/
+web/dist/
+data/
+.env
+*.db
+*.db-shm
+*.db-wal
+checkin-reminder.zip
+.DS_Store
+Thumbs.db
+*.log
+logs/
