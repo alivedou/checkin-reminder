@@ -7,7 +7,7 @@ RUN npm ci
 RUN npx tsc --outDir dist
 COPY web/package*.json ./web/
 COPY web/ ./web/
-RUN cd web \&\& npm ci \&\& npm run build
+RUN cd web && npm ci && npm run build
 FROM node:20-alpine
 RUN apk add --no-cache python3 make g++
 WORKDIR /app
