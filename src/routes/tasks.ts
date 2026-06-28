@@ -38,7 +38,7 @@ router.post('/', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-  const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(req.params.id);
+  const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(req.params.id) as any;
   if (!task) return res.status(404).json({ error: 'Not found' });
   const { name, url, interval_days, remind_days_before, remind_enabled, status, notes, category } = req.body;
   const now = new Date().toISOString();

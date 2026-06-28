@@ -9,7 +9,7 @@ const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 10, standardHeaders:
 router.post('/login', loginLimiter, (req: Request, res: Response) => {
   const { password } = req.body;
   if (!password) return res.status(400).json({ error: 'Password required' });
-  const valid = verifyPassword(password, config.adminPassword);
+  const valid = verifyPassword(password);
   if (!valid) return res.status(401).json({ error: 'Wrong password' });
   const token = signToken({ role: 'admin' });
   res.json({ token });
