@@ -49,7 +49,7 @@ migrate();
 ensureAdminHash();
 initBot();
 
-cron.schedule('0 * * * *', () => processReminders().catch(console.error));
+cron.schedule('0 9,14,20 * * *', () => processReminders().catch(console.error));
 
 app.listen(config.port, () => {
   console.log(`\n🚀 签到提醒系统已启动\n📡 Port: ${config.port}\n📱 TG: ${config.tgBotToken ? '已配置' : '未配置'}\n`);

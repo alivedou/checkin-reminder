@@ -20,5 +20,12 @@ export function migrate() {
   db.exec(`CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY, value TEXT NOT NULL
   )`);
+  db.exec(`CREATE TABLE IF NOT EXISTS notification_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id TEXT NOT NULL,
+    sent_at TEXT DEFAULT (datetime('now')),
+    type TEXT DEFAULT 'reminder',
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+  )`);
   console.log('✅ Database migrated');
 }

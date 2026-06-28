@@ -4,12 +4,9 @@ import { config } from '../config.js';
 import db from '../db/connection.js';
 
 export function ensureAdminHash(): void {
-  const existing = db.prepare("SELECT value FROM settings WHERE key='admin_password_hash'").get() as any;
-  if (!existing) {
-    const hash = bcrypt.hashSync(config.adminPassword, 12);
-    db.prepare("INSERT OR REPLACE INTO settings (key,value) VALUES ('admin_password_hash',?)").run(hash);
-    console.log('✅ Admin password hashed');
-  }
+  const hash = bcrypt.hashSync(config.adminPassword, 12);
+  db.prepare("INSERT OR REPLACE INTO settings (key,value) VALUES ('admin_password_hash',?)").run(hash);
+  console.log('✅ Admin password synced from env');
 }
 export function verifyPassword(pw: string): boolean {
   const row = db.prepare("SELECT value FROM settings WHERE key='admin_password_hash'").get() as any;
