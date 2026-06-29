@@ -80,38 +80,36 @@ docker compose up -d
 
 ---
 
-## 一键部署（推荐仓库拥有者使用）
+## 容器平台部署（Sealos / Railway / Zeabur / Fly.io 等）
 
-通过 GitHub Actions 构建**自带密码**的 Docker 镜像，部署到容器平台后**无需设置任何环境变量**。
+### 前置条件
 
-### 第 1 步：设置 GitHub Secrets
+1. 在容器平台创建一个服务，使用公开镜像：
+   ```
+   ghcr.io/alivedou/checkin-reminder:latest
+   ```
+2. **配置持久化存储**——挂载一个 Volume 到 `/app/data`（这是唯一必需的非代码配置）
 
-在仓库 **Settings → Secrets and variables → Actions** 中添加以下 Secrets：
+### 环境变量
 
-| Secret 名称 | 内容 | 是否必填 |
-|-------------|------|:--:|
-| `ADMIN_PASSWORD` | 你的管理密码 | ✅ |
-| `JWT_SECRET` | 随机字符串，越长越好（如 `openssl rand -hex 32`） | ✅ |
-| `TG_BOT_TOKEN` | Telegram Bot Token | 否 |
-| `TG_CHAT_ID` | Telegram Chat ID | 否 |
+部署时在平台的环境变量面板中至少设置以下两项：
 
-**注意**：`JWT_SECRET` 务必设置一个固定值，否则每次重启镜像会自动生成新密钥，导致所有设备需要重新登录。
+| 变量 | 说明 | 示例 |
+|------|------|------|
+| `ADMIN_PASSWORD` | 你的管理密码 | `MyP@ssw0rd2024` |
+| `JWT_SECRET` | 随机字符串（越长越好） | `openssl rand -hex 32` 的输出 |
 
-### 第 2 步：触发 Docker 构建
+以下为可选：
 
-1. 打开仓库 **Actions** → **Docker Build** → **Run workflow**
-2. 标签保持默认 `latest` 或自定义
-3. 点击 **Run workflow**，等待构建完成（约 8-12 分钟）
+| 变量 | 说明 |
+|------|------|
+| `TG_BOT_TOKEN` | Telegram Bot Token（不填则关闭 TG 通知） |
+| `TG_CHAT_ID` | Telegram Chat ID |
+| `BASE_URL` | 服务公网地址（用于生成正确的分享链接） |
 
-构建完成后镜像推送至 `ghcr.io/alivedou/checkin-reminder:latest`。
+### 部署模板
 
-### 第 3 步：容器平台部署
-
-镜像已内置密码和密钥，直接拉取即可，**不需要填任何环境变量**。
-
-唯一需要配置的是**持久化存储**，否则重启后数据丢失：
-
-**Sealos / Docker Compose 导入：**
+**Sealos（Docker Compose 导入）：**
 ```yaml
 services:
   checkin:
@@ -119,99 +117,72 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      - data:/app/data          # ← 必须挂载持久化卷
+      - data:/app/data
+    environment:
+      - ADMIN_PASSWORD=你的强密码
+      - JWT_SECRET=你的随机密钥
+      # Telegram 可选
+      - TG_BOT_TOKEN=
+      - TG_CHAT_ID=
 volumes:
   data:
 ```
 
-**Railway / Zeabur / Fly.io 等：**
-- 镜像地址填 `ghcr.io/alivedou/checkin-reminder:latest`
-- 挂载一个 Volume 到 `/app/data` 路径
-- 无需设置任何环境变量
+**Railway / Zeabur / Fly.io：**
+- 镜像填 `ghcr.io/alivedou/checkin-reminder:latest`
+- 添加 Environment Variables：`ADMIN_PASSWORD`、`JWT_SECRET`（及 TG 相关）
+- 挂载 Volume 到 `/app/data`
+- 暴露端口 `3000`
 
-### 第 4 步：验证
+### 验证部署
 
-部署后查看日志，确认：
+部署后查看日志，确认以下三行：
 
 ```
-✅ Admin password synced from env    ← hash 写入成功
-📁 Storage:     外部挂载              ← 持久化存储已挂载
+✅ Admin password synced from env    ← 密码写入 DB 成功
+📁 Storage:     外部挂载              ← 持久化已生效（非"容器内部"）
 📱 TG:          已配置 / 未配置
 ```
 
+如果看到 `📁 Storage: 容器内部（重启数据会丢失！）`，说明未正确挂载持久化存储，需要检查 Volume 配置。
+
 ---
 
-## 自行部署（Fork 用户指南）
+## 自行部署（Fork 用户 / 本地 VPS）
 
-如果你 fork 了此仓库，按以下步骤构建你自己的镜像。
-
-### 1. Fork 并配置 Secrets
+### GitHub Actions 构建
 
 1. Fork 本仓库到你自己的 GitHub 账号
-2. 在 fork 的仓库中进 **Settings → Secrets and variables → Actions**，添加 Secrets（同上表）
-3. **Settings → Actions → General → Workflow permissions** 设为 **Read and write permissions**
+2. **Actions → Docker Build → Run workflow** 手动触发
+3. 镜像推送到 `ghcr.io/<你的用户名>/checkin-reminder:latest`
+4. `ghcr.io` 镜像**默认为私有**，部署时需配置 PAT 认证拉取
 
-### 2. 触发构建
-
-**Actions → Docker Build → Run workflow**，等待构建完成。
-
-镜像会推送到 `ghcr.io/<你的GitHub用户名>/checkin-reminder:latest`。
-
-### 3. 本地手动构建（不用 GitHub Actions）
+### 本地 Docker 构建
 
 ```bash
-git clone https://github.com/<你的用户名>/checkin-reminder.git
-cd checkin-reminder
-
-docker build \
-  --build-arg ADMIN_PASSWORD=你的密码 \
-  --build-arg JWT_SECRET=你的密钥 \
-  --build-arg TG_BOT_TOKEN=你的TG Token \
-  --build-arg TG_CHAT_ID=你的TG Chat ID \
-  -t checkin-reminder:latest .
-```
-
-### 4. 部署
-
-用你自己的镜像地址替换文档中的 `alivedou/checkin-reminder`，其余步骤同上。
-
-### 5. 关于镜像隐私
-
-- `ghcr.io` 上的镜像**默认为私有**，仅仓库拥有者可以拉取
-- 使用 `--build-arg` 传入的密码不会出现在镜像层历史中（`docker history` 不可见）
-- 镜像已内含密码，**请勿将其公开**
-
----
-
-## VPS 手动部署（Docker Compose）
-
-适用于自己有一台 Linux VPS（腾讯云/阿里云/甲骨文等）。
-
-```bash
-# 1. 安装 Docker
-curl -fsSL https://get.docker.com | sudo bash
-
-# 2. 克隆项目
 git clone https://github.com/alivedou/checkin-reminder.git
 cd checkin-reminder
 
-# 3. 本地构建（传入密码）
-docker build \
-  --build-arg ADMIN_PASSWORD=你的密码 \
-  --build-arg JWT_SECRET=你的密钥 \
-  -t checkin-reminder .
-
-# 4. 启动
+# 方式一：docker compose（推荐）
+# 编辑 .env 设置密码后直接启动
+cp .env.example .env
+vi .env
 docker compose up -d
+
+# 方式二：手动 docker build + run
+docker build -t checkin-reminder .
+docker run -d -p 3000:3000 \
+  -v $(pwd)/data:/app/data \
+  -e ADMIN_PASSWORD=你的密码 \
+  -e JWT_SECRET=你的密钥 \
+  checkin-reminder
 ```
 
-编辑 `docker-compose.yml` 中的环境变量后也可直接 `docker compose up -d --build`，无需手动传 `--build-arg`。
-
-### 日常维护
+### VPS 日常维护
 
 ```bash
 docker compose logs -f          # 查看日志
-docker compose restart          # 重启服务
-docker compose down             # 停止服务
-docker compose up -d --build    # 更新并重建
+docker compose restart          # 重启
+docker compose down             # 停止
+git pull && docker compose up -d --build  # 更新
 ```
