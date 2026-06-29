@@ -178,6 +178,29 @@ docker run -d -p 3000:3000 \
   checkin-reminder
 ```
 
+### 方式三：改默认值（最省事）
+
+如果想让构建出来的镜像自带配置，部署时无需设置环境变量，直接修改 `src/config.ts` 中的默认值：
+
+```typescript
+// src/config.ts
+export const config = {
+  port: parseInt(process.env.PORT || '3000'),                  // 端口号，一般不用改
+  adminPassword: process.env.ADMIN_PASSWORD || '你的密码',     // ← 改这个，登录密码
+  jwtSecret: process.env.JWT_SECRET || '一串固定随机字符',     // ← 改这个，签名密钥（必须固定！否则重启需重新登录）
+  tgBotToken: process.env.TG_BOT_TOKEN || '',                  // ← 可选，Telegram Bot Token
+  tgChatId: process.env.TG_CHAT_ID || '',                      // ← 可选，接收提醒的 Chat ID
+  // ... 其他保持默认即可（DB_PATH、TZ、CORS_ORIGIN、BASE_URL）
+};
+```
+
+改完后 `docker build -t checkin-reminder .`，部署时不用填任何 env。
+
+> **注意**：
+> - `JWT_SECRET` 必须设为一个**固定值**（如 `openssl rand -hex 32` 的输出），否则每次重启随机生成新密钥，已登录用户全部掉线
+> - 如果 fork 的仓库是公开的，密码会明文暴露在源码中，仅推荐私有仓库使用
+> - 运行时环境变量仍然可以**覆盖**这些默认值（先读 `process.env`，不存在才走 `||` 后面的值）
+
 ### VPS 日常维护
 
 ```bash
