@@ -44,5 +44,10 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.tag }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          build-args: |
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            TG_BOT_TOKEN=${{ secrets.TG_BOT_TOKEN }}
+            TG_CHAT_ID=${{ secrets.TG_CHAT_ID }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

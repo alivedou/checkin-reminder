@@ -80,58 +80,138 @@ docker compose up -d
 
 ---
 
-## Docker 部署（VPS / 容器平台通用）
+## 一键部署（推荐仓库拥有者使用）
 
-### 重要：持久化存储
+通过 GitHub Actions 构建**自带密码**的 Docker 镜像，部署到容器平台后**无需设置任何环境变量**。
 
-SQLite 数据库文件默认保存在 `/app/data/tasks.db`。如果容器平台未配置持久化存储，**重启后所有数据会丢失**，且登录会因密码 hash 丢失而失败（401）。
+### 第 1 步：设置 GitHub Secrets
 
-容器部署时必须做好以下之一：
+在仓库 **Settings → Secrets and variables → Actions** 中添加以下 Secrets：
 
-| 方案 | 操作 |
-|------|------|
-| **挂载卷** | 将容器平台提供的持久化存储挂载到 `/app/data` |
-| **改 DB_PATH** | 设置环境变量 `DB_PATH=/你的持久化路径/tasks.db` |
+| Secret 名称 | 内容 | 是否必填 |
+|-------------|------|:--:|
+| `ADMIN_PASSWORD` | 你的管理密码 | ✅ |
+| `JWT_SECRET` | 随机字符串，越长越好（如 `openssl rand -hex 32`） | ✅ |
+| `TG_BOT_TOKEN` | Telegram Bot Token | 否 |
+| `TG_CHAT_ID` | Telegram Chat ID | 否 |
 
-### 容器平台最小部署（以你使用的平台为例）
+**注意**：`JWT_SECRET` 务必设置一个固定值，否则每次重启镜像会自动生成新密钥，导致所有设备需要重新登录。
 
-选择任意一种方式：
+### 第 2 步：触发 Docker 构建
 
-**方式 1：Docker Compose 导入**
+1. 打开仓库 **Actions** → **Docker Build** → **Run workflow**
+2. 标签保持默认 `latest` 或自定义
+3. 点击 **Run workflow**，等待构建完成（约 8-12 分钟）
+
+构建完成后镜像推送至 `ghcr.io/alivedou/checkin-reminder:latest`。
+
+### 第 3 步：容器平台部署
+
+镜像已内置密码和密钥，直接拉取即可，**不需要填任何环境变量**。
+
+唯一需要配置的是**持久化存储**，否则重启后数据丢失：
+
+**Sealos / Docker Compose 导入：**
 ```yaml
 services:
   checkin:
-    image: ghcr.io/<你的用户名>/checkin-reminder:latest
+    image: ghcr.io/alivedou/checkin-reminder:latest
     ports:
       - "3000:3000"
     volumes:
-      - data:/app/data          # ← 必须挂载持久化存储
-    environment:
-      - ADMIN_PASSWORD=你的强密码
-      - JWT_SECRET=你的随机密钥
+      - data:/app/data          # ← 必须挂载持久化卷
 volumes:
   data:
 ```
 
-**方式 2：环境变量方式（平台不支持 volumes 时）**
+**Railway / Zeabur / Fly.io 等：**
+- 镜像地址填 `ghcr.io/alivedou/checkin-reminder:latest`
+- 挂载一个 Volume 到 `/app/data` 路径
+- 无需设置任何环境变量
 
-设置以下环境变量，然后将 `DB_PATH` 指向平台提供的可写路径：
+### 第 4 步：验证
+
+部署后查看日志，确认：
 
 ```
-PORT=3000
-ADMIN_PASSWORD=你的强密码
-JWT_SECRET=你的随机密钥
-DB_PATH=/persistent/data/tasks.db    ← 改为平台提供的持久化路径
+✅ Admin password synced from env    ← hash 写入成功
+📁 Storage:     外部挂载              ← 持久化存储已挂载
+📱 TG:          已配置 / 未配置
 ```
 
-如果平台不支持任何持久化，服务仍可运行，但数据在重启后会丢失。
+---
 
-### 启动验证
+## 自行部署（Fork 用户指南）
 
-启动后检查日志，确认以下两点：
+如果你 fork 了此仓库，按以下步骤构建你自己的镜像。
 
-1. `✅ Admin password synced from env` （hash 写入成功）
-2. `💾 DB:` 路径 + `📁 Storage:` 显示为 `外部挂载`（而非 `容器内部`）
+### 1. Fork 并配置 Secrets
 
-如果看到 `📁 Storage: 容器内部（重启数据会丢失！）`，说明未挂载持久化存储。
+1. Fork 本仓库到你自己的 GitHub 账号
+2. 在 fork 的仓库中进 **Settings → Secrets and variables → Actions**，添加 Secrets（同上表）
+3. **Settings → Actions → General → Workflow permissions** 设为 **Read and write permissions**
 
+### 2. 触发构建
+
+**Actions → Docker Build → Run workflow**，等待构建完成。
+
+镜像会推送到 `ghcr.io/<你的GitHub用户名>/checkin-reminder:latest`。
+
+### 3. 本地手动构建（不用 GitHub Actions）
+
+```bash
+git clone https://github.com/<你的用户名>/checkin-reminder.git
+cd checkin-reminder
+
+docker build \
+  --build-arg ADMIN_PASSWORD=你的密码 \
+  --build-arg JWT_SECRET=你的密钥 \
+  --build-arg TG_BOT_TOKEN=你的TG Token \
+  --build-arg TG_CHAT_ID=你的TG Chat ID \
+  -t checkin-reminder:latest .
+```
+
+### 4. 部署
+
+用你自己的镜像地址替换文档中的 `alivedou/checkin-reminder`，其余步骤同上。
+
+### 5. 关于镜像隐私
+
+- `ghcr.io` 上的镜像**默认为私有**，仅仓库拥有者可以拉取
+- 使用 `--build-arg` 传入的密码不会出现在镜像层历史中（`docker history` 不可见）
+- 镜像已内含密码，**请勿将其公开**
+
+---
+
+## VPS 手动部署（Docker Compose）
+
+适用于自己有一台 Linux VPS（腾讯云/阿里云/甲骨文等）。
+
+```bash
+# 1. 安装 Docker
+curl -fsSL https://get.docker.com | sudo bash
+
+# 2. 克隆项目
+git clone https://github.com/alivedou/checkin-reminder.git
+cd checkin-reminder
+
+# 3. 本地构建（传入密码）
+docker build \
+  --build-arg ADMIN_PASSWORD=你的密码 \
+  --build-arg JWT_SECRET=你的密钥 \
+  -t checkin-reminder .
+
+# 4. 启动
+docker compose up -d
+```
+
+编辑 `docker-compose.yml` 中的环境变量后也可直接 `docker compose up -d --build`，无需手动传 `--build-arg`。
+
+### 日常维护
+
+```bash
+docker compose logs -f          # 查看日志
+docker compose restart          # 重启服务
+docker compose down             # 停止服务
+docker compose up -d --build    # 更新并重建
+```
