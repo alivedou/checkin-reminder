@@ -33,7 +33,7 @@ app.use('/api', apiLimiter);
 app.get('/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
 app.use('/api/auth', authRouter);
-app.use('/api/share', shareRouter);
+app.use('/api/share', config.publicAccess ? shareRouter : [authMiddleware, shareRouter]);
 app.use('/api/public/tasks', publicTasksRouter);
 app.use('/api/tasks', authMiddleware, tasksRouter);
 app.use('/api/checkin', authMiddleware, checkinRouter);

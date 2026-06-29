@@ -11,4 +11,5 @@ export const config = {
   tz: process.env.TZ || 'Asia/Shanghai',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   baseUrl: process.env.BASE_URL || '',
+  publicAccess: process.env.PUBLIC_ACCESS === 'on',
 };
