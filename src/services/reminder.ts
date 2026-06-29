@@ -12,9 +12,9 @@ const AFTER_MAX_DAYS = 3;      // 过期后：最多提醒3天
 
 // Random delay to avoid looking like bulk spam
 const BATCH_DELAY_MIN = 0;       // sec - 整点后最小延迟
-const BATCH_DELAY_MAX = 30;      // sec - 整点后最大延迟
-const PER_MSG_DELAY_MIN = 2;     // sec - 每条消息间最小间隔
-const PER_MSG_DELAY_MAX = 6;     // sec - 每条消息间最大间隔
+const BATCH_DELAY_MAX = 900;     // sec - 整点后最大延迟 (15 min)
+const PER_MSG_DELAY_MIN = 0;     // sec - 每条消息间最小间隔
+const PER_MSG_DELAY_MAX = 30;    // sec - 每条消息间最大间隔
 
 function getTodaySentCount(taskId: string, type: 'upcoming' | 'overdue'): number {
   const row = db.prepare(
