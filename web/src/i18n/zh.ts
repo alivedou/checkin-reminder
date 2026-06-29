@@ -1,6 +1,6 @@
 const zh = {
   common: {
-    appTitle: '签到提醒',
+    appTitle: '我的任务',
     tasks: '{n} 个任务',
     noTasks: '暂无签到任务',
     noTasksHint: '点击右上角「+ 添加任务」开始',
@@ -32,7 +32,7 @@ const zh = {
     pending: '待设置',
     loginTitle: '管理员登录',
     loginHint: '登录后可管理签到任务、查看详细信息',
-    footerText: '签到链接和备注信息已隐藏 · 仅管理员可查看完整内容',
+    footerText: '详细信息已隐藏 · 仅管理员可查看完整内容',
   },
   task: {
     checkin: '立即签到',
@@ -47,7 +47,7 @@ const zh = {
     remindBefore: '提前',
     remindBeforeUnit: '天提醒',
     remindDisabled: '未启用提醒',
-    quickShare: '快速分享',
+    quickShare: '复制链接',
     copied: '已复制',
     shareFailed: '获取分享链接失败',
     deleteConfirm: '确定删除「{name}」？',

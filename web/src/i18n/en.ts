@@ -2,7 +2,7 @@ import type { Translations } from './zh';
 
 const en: Translations = {
   common: {
-    appTitle: 'Checkin Reminder',
+    appTitle: 'My Tasks',
     tasks: '{n} tasks',
     noTasks: 'No tasks yet',
     noTasksHint: 'Click "+ Add Task" to get started',
@@ -34,7 +34,7 @@ const en: Translations = {
     pending: 'Pending',
     loginTitle: 'Admin Login',
     loginHint: 'Log in to manage check-in tasks and view details',
-    footerText: 'Check-in links and notes are hidden · Only admins can view full content',
+    footerText: 'Details are hidden · Only admins can view full content',
   },
   task: {
     checkin: 'Check In',
@@ -49,7 +49,7 @@ const en: Translations = {
     remindBefore: 'Remind',
     remindBeforeUnit: 'days before',
     remindDisabled: 'Reminder disabled',
-    quickShare: 'Share',
+    quickShare: 'Copy Link',
     copied: 'Copied',
     shareFailed: 'Failed to get share link',
     deleteConfirm: 'Delete "{name}"?',
