@@ -23,8 +23,8 @@ const zh = {
   },
   landing: {
     adminLogin: '管理员登录',
-    dashboardTitle: '任务签到状态看板',
-    dashboardSub: '实时监控各项签到任务的到期时间，确保不遗漏任何重要签到',
+    dashboardTitle: '我的签到任务',
+    dashboardSub: '管理个人签到任务，查看到期状态',
     totalTasks: '总任务',
     overdue: '已过期',
     dueSoon: '即将到期',

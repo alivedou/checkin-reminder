@@ -25,8 +25,8 @@ const en: Translations = {
   },
   landing: {
     adminLogin: 'Admin Login',
-    dashboardTitle: 'Task Check-in Dashboard',
-    dashboardSub: 'Real-time monitoring of all check-in tasks to ensure nothing is missed',
+    dashboardTitle: 'My Check-in Tasks',
+    dashboardSub: 'Manage personal check-in tasks and view due dates',
     totalTasks: 'Total',
     overdue: 'Overdue',
     dueSoon: 'Due Soon',
