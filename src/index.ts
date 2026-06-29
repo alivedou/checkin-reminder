@@ -14,6 +14,7 @@ import authRouter from './routes/auth.js';
 import tasksRouter from './routes/tasks.js';
 import checkinRouter from './routes/checkin.js';
 import shareRouter from './routes/share.js';
+import publicTasksRouter from './routes/publicTasks.js';
 import { processReminders } from './services/reminder.js';
 import { initBot } from './services/telegram.js';
 
@@ -31,6 +32,7 @@ app.get('/health', (_req, res) => res.json({ ok: true, time: new Date().toISOStr
 
 app.use('/api/auth', authRouter);
 app.use('/api/share', shareRouter);
+app.use('/api/public/tasks', publicTasksRouter);
 app.use('/api/tasks', authMiddleware, tasksRouter);
 app.use('/api/checkin', authMiddleware, checkinRouter);
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, ExternalLink, Clock, Bell, BellOff, Trash2, Check, Loader2, Copy, RotateCcw, Pencil, History } from 'lucide-react';
+import { ExternalLink, Clock, Bell, BellOff, Trash2, Check, Loader2, Copy, RotateCcw, Pencil, History, CalendarClock } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { Task, checkinTask, deleteTask, getShareUrl } from '../api/client';
 interface TaskCardProps { task: Task; onRefresh: () => void; onEdit: (t: Task) => void; onHistory: (t: Task) => void; }
@@ -9,7 +9,8 @@ export function TaskCard({ task, onRefresh, onEdit, onHistory }: TaskCardProps) 
   const handleCheckin = async () => { setLoading(true); try { await checkinTask(task.id); onRefresh(); } catch { alert('签到失败'); } finally { setLoading(false); } };
   const handleDelete = async () => { if (!confirm(`确定删除「${task.name}」？`)) return; await deleteTask(task.id); onRefresh(); };
   const handleShare = async () => { try { const { shareUrl } = await getShareUrl(task.id); await navigator.clipboard.writeText(shareUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { alert('获取分享链接失败'); } };
-  const borderColor = task.days_until !== null && task.days_until < 0 ? 'var(--accent-red)' : 'var(--border)';
+  const borderColor = task.days_until !== null && task.days_until < 0 ? 'var(--accent-red)' : task.days_until !== null && task.days_until <= task.remind_days_before ? 'var(--accent-yellow)' : 'var(--border)';
+  const nextDate = task.next_checkin ? new Date(task.next_checkin).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '未知';
   return (
     <div className="rounded-xl border p-5 transition-all hover:shadow-lg" style={{ background: 'var(--bg-card)', borderColor }}>
       <div className="flex items-start justify-between mb-3">
@@ -22,19 +23,22 @@ export function TaskCard({ task, onRefresh, onEdit, onHistory }: TaskCardProps) 
       </div>
       <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
         <div className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
-          <Calendar className="w-4 h-4" />
-          <div><div className="text-xs">签到间隔</div><div className="font-medium" style={{ color: 'var(--text-primary)' }}>{task.interval_days} 天</div></div>
+          <CalendarClock className="w-4 h-4" />
+          <div><div className="text-xs">下次到期</div><div className="font-medium" style={{ color: task.days_until !== null && task.days_until <= task.remind_days_before ? 'var(--accent-yellow)' : 'var(--text-primary)' }}>{nextDate}</div></div>
         </div>
         <div className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
           <Clock className="w-4 h-4" />
           <div><div className="text-xs">上次签到</div><div className="font-medium" style={{ color: 'var(--text-primary)' }}>{task.last_checkin ? `${new Date(task.last_checkin).toLocaleDateString('zh-CN')} (${task.days_since ?? '-'}天前)` : '从未签到'}</div></div>
         </div>
       </div>
-      {task.remind_enabled ? (
-        <div className="flex items-center gap-1.5 text-xs mb-4" style={{ color: 'var(--accent-purple)' }}><Bell className="w-3 h-3" /> 提前 {task.remind_days_before} 天提醒</div>
-      ) : (
-        <div className="flex items-center gap-1.5 text-xs mb-4" style={{ color: 'var(--text-muted)' }}><BellOff className="w-3 h-3" /> 未启用提醒</div>
-      )}
+      <div className="flex items-center gap-3 mb-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+        <span>签到间隔：{task.interval_days} 天</span>
+        {task.remind_enabled ? (
+          <span className="inline-flex items-center gap-1" style={{ color: 'var(--accent-purple)' }}><Bell className="w-3 h-3" /> 提前 {task.remind_days_before} 天提醒</span>
+        ) : (
+          <span className="inline-flex items-center gap-1"><BellOff className="w-3 h-3" /> 未启用提醒</span>
+        )}
+      </div>
       {task.notes && <div className="text-xs mb-4 px-3 py-2 rounded-lg" style={{ background: 'var(--bg-input)', color: 'var(--text-secondary)' }}>📝 {task.notes}</div>}
       <div className="flex flex-wrap gap-2">
         <button onClick={handleCheckin} disabled={loading} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'var(--accent-blue)', color: '#fff' }}>

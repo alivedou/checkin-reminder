@@ -25,12 +25,14 @@ router.get('/', (_req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { name, url, interval_days, remind_days_before, notes, category } = req.body;
+  const { name, url, interval_days, remind_days_before, notes, category, next_checkin } = req.body;
   if (!name) return res.status(400).json({ error: 'Name required' });
   if (name.length > 100) return res.status(400).json({ error: 'Name too long' });
   const id = uuidv4();
   const now = new Date().toISOString();
-  const next = new Date(Date.now() + (interval_days || 14) * 86400000).toISOString();
+  const next = next_checkin
+    ? new Date(next_checkin).toISOString()
+    : new Date(Date.now() + 4 * 86400000).toISOString();
   db.prepare('INSERT INTO tasks (id,name,url,interval_days,remind_days_before,next_checkin,notes,category,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
     .run(id, name, url||'', interval_days||14, remind_days_before||3, next, notes||'', category||'', now, now);
   const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(id);
@@ -40,10 +42,14 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const task = db.prepare('SELECT * FROM tasks WHERE id=?').get(req.params.id) as any;
   if (!task) return res.status(404).json({ error: 'Not found' });
-  const { name, url, interval_days, remind_days_before, remind_enabled, status, notes, category } = req.body;
+  const { name, url, interval_days, remind_days_before, remind_enabled, status, notes, category, next_checkin } = req.body;
   const now = new Date().toISOString();
-  db.prepare('UPDATE tasks SET name=?,url=?,interval_days=?,remind_days_before=?,remind_enabled=?,status=?,notes=?,category=?,updated_at=? WHERE id=?')
-    .run(name??task.name, url??task.url, interval_days??task.interval_days, remind_days_before??task.remind_days_before, remind_enabled??task.remind_enabled, status??task.status, notes??task.notes, category??task.category, now, req.params.id);
+  let next = task.next_checkin;
+  if ('next_checkin' in req.body) {
+    next = next_checkin ? new Date(next_checkin).toISOString() : null;
+  }
+  db.prepare('UPDATE tasks SET name=?,url=?,interval_days=?,remind_days_before=?,remind_enabled=?,status=?,notes=?,category=?,next_checkin=?,updated_at=? WHERE id=?')
+    .run(name??task.name, url??task.url, interval_days??task.interval_days, remind_days_before??task.remind_days_before, remind_enabled??task.remind_enabled, status??task.status, notes??task.notes, category??task.category, next, now, req.params.id);
   res.json(enrich(db.prepare('SELECT * FROM tasks WHERE id=?').get(req.params.id)));
 });
 

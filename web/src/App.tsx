@@ -4,6 +4,7 @@ import { useTasks } from './hooks/useTasks';
 import { TaskGrid } from './components/TaskGrid';
 import { AddTaskModal } from './components/AddTaskModal';
 import { EditTaskModal } from './components/EditTaskModal';
+import { LandingPage } from './components/LandingPage';
 import { login, testTelegram, Task } from './api/client';
 export default function App() {
   const [authenticated, setAuthenticated] = useState(() => !!localStorage.getItem('checkin_token'));
@@ -15,15 +16,7 @@ export default function App() {
   const handleLogin = async (e: React.FormEvent) => { e.preventDefault(); const ok = await login(password); if (ok) setAuthenticated(true); else alert('密码错误'); };
   const handleTestTg = async () => { const res = await testTelegram(); setTgResult(res.message); setTimeout(() => setTgResult(null), 5000); };
   if (!authenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-primary)' }}>
-        <form onSubmit={handleLogin} className="w-full max-w-sm rounded-2xl p-6 border" style={{ background: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-          <h1 className="text-xl font-bold text-center mb-4">🔐 签到提醒</h1>
-          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="输入管理密码" autoFocus className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none mb-3" style={{ background: 'var(--bg-input)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
-          <button type="submit" className="w-full py-2.5 rounded-lg text-sm font-medium" style={{ background: 'var(--accent-blue)', color: '#fff' }}>进入面板</button>
-        </form>
-      </div>
-    );
+    return <LandingPage />;
   }
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>

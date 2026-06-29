@@ -11,6 +11,13 @@ export interface Task {
   created_at: string;
 }
 export interface CheckinLog { id: number; task_id: string; checked_at: string; source: string; }
+export interface PublicTask {
+  id: string; name: string; interval_days: number;
+  last_checkin: string | null; next_checkin: string | null;
+  remind_days_before: number; remind_enabled: number;
+  category: string; status: string;
+  days_until: number | null; days_since: number | null;
+}
 
 export async function login(password: string): Promise<boolean> {
   const res = await fetch(`${BASE}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
@@ -18,7 +25,7 @@ export async function login(password: string): Promise<boolean> {
   return false;
 }
 export async function fetchTasks(): Promise<Task[]> { const r = await fetch(`${BASE}/tasks`, { headers: authHeaders() }); if (!r.ok) throw new Error('Failed'); return r.json(); }
-export async function createTask(data: { name: string; url?: string; interval_days?: number; remind_days_before?: number; notes?: string; category?: string }): Promise<Task> {
+export async function createTask(data: { name: string; url?: string; interval_days?: number; remind_days_before?: number; notes?: string; category?: string; next_checkin?: string }): Promise<Task> {
   const r = await fetch(`${BASE}/tasks`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(data) }); if (!r.ok) throw new Error('Failed'); return r.json();
 }
 export async function updateTask(id: string, data: Partial<Task>): Promise<Task> {
@@ -36,4 +43,9 @@ export async function getShareUrl(taskId: string): Promise<{ shareUrl: string }>
 }
 export async function getCheckinLogs(taskId: string): Promise<CheckinLog[]> {
   const r = await fetch(`${BASE}/checkin/${taskId}/logs`, { headers: authHeaders() }); return r.json();
+}
+export async function fetchPublicTasks(): Promise<PublicTask[]> {
+  const r = await fetch(`${BASE}/public/tasks`);
+  if (!r.ok) throw new Error('Failed');
+  return r.json();
 }
