@@ -18,7 +18,7 @@
 | 数据库连接 + 迁移 | `src/db/connection.ts`, `src/db/migrate.ts` |
 | 密码/JWT | `src/utils/auth.ts` |
 | 认证中间件 | `src/middleware/auth.ts` (JWT 支持 header + query param) |
-| 提醒逻辑 | `src/services/reminder.ts` (限流: 到期前 3次/天，过期后 1次/天×3天) |
+| 提醒逻辑 | `src/services/reminder.ts` (限流: 到期前 3次/天，过期后 1次/天×3天，含随机延迟防滥用) |
 | TG Bot | `src/services/telegram.ts` (内联键盘: `/start /list /check /status /due`) |
 | 路由: 公开任务 | `src/routes/publicTasks.ts` (无需认证，去敏) |
 | 路由: 分享链接 | `src/routes/share.ts` |

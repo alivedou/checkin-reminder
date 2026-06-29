@@ -2,10 +2,19 @@ import { getAllTasks } from '../db/queries.js';
 import { sendTelegram } from './telegram.js';
 import db from '../db/connection.js';
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min);
+
 // Send limits
 const BEFORE_DAILY_LIMIT = 3;  // 到期前：每天最多3次
 const AFTER_DAILY_LIMIT = 1;   // 过期后：每天最多1次
 const AFTER_MAX_DAYS = 3;      // 过期后：最多提醒3天
+
+// Random delay to avoid looking like bulk spam
+const BATCH_DELAY_MIN = 0;       // sec - 整点后最小延迟
+const BATCH_DELAY_MAX = 30;      // sec - 整点后最大延迟
+const PER_MSG_DELAY_MIN = 2;     // sec - 每条消息间最小间隔
+const PER_MSG_DELAY_MAX = 6;     // sec - 每条消息间最大间隔
 
 function getTodaySentCount(taskId: string, type: 'upcoming' | 'overdue'): number {
   const row = db.prepare(
@@ -30,6 +39,13 @@ export async function processReminders() {
   const now = Date.now();
   let sent = 0;
 
+  // Random delay before starting to avoid batch-sending at exact cron time
+  const batchDelay = rand(BATCH_DELAY_MIN, BATCH_DELAY_MAX);
+  if (batchDelay > 0) {
+    console.log(`⏳ Waiting ${batchDelay}s before sending reminders...`);
+    await sleep(batchDelay * 1000);
+  }
+
   for (const task of tasks) {
     if (!task.remind_enabled || !task.next_checkin) continue;
 
@@ -44,6 +60,9 @@ export async function processReminders() {
       const todaySent = getTodaySentCount(task.id, 'overdue');
       if (todaySent >= AFTER_DAILY_LIMIT) continue; // 今天已发过
 
+      // Random delay between messages to avoid bulk-sending pattern
+      if (sent > 0) await sleep(rand(PER_MSG_DELAY_MIN, PER_MSG_DELAY_MAX) * 1000);
+
       await sendTelegram(
         `🔴 **${task.name}** 已过期 ${daysOverdue} 天！\n请立即签到。`
       );
@@ -54,6 +73,9 @@ export async function processReminders() {
       // === 即将到期：每天3次 ===
       const todaySent = getTodaySentCount(task.id, 'upcoming');
       if (todaySent >= BEFORE_DAILY_LIMIT) continue; // 今天已发满3次
+
+      // Random delay between messages to avoid bulk-sending pattern
+      if (sent > 0) await sleep(rand(PER_MSG_DELAY_MIN, PER_MSG_DELAY_MAX) * 1000);
 
       const urgency = diff <= 1 ? '🟠' : '🟡';
       await sendTelegram(
