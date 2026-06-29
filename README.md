@@ -77,3 +77,61 @@ docker compose up -d
 - **认证**: JWT + bcryptjs
 - **通知**: node-telegram-bot-api
 - **容器**: Docker + Alpine Linux
+
+---
+
+## Docker 部署（VPS / 容器平台通用）
+
+### 重要：持久化存储
+
+SQLite 数据库文件默认保存在 `/app/data/tasks.db`。如果容器平台未配置持久化存储，**重启后所有数据会丢失**，且登录会因密码 hash 丢失而失败（401）。
+
+容器部署时必须做好以下之一：
+
+| 方案 | 操作 |
+|------|------|
+| **挂载卷** | 将容器平台提供的持久化存储挂载到 `/app/data` |
+| **改 DB_PATH** | 设置环境变量 `DB_PATH=/你的持久化路径/tasks.db` |
+
+### 容器平台最小部署（以你使用的平台为例）
+
+选择任意一种方式：
+
+**方式 1：Docker Compose 导入**
+```yaml
+services:
+  checkin:
+    image: ghcr.io/<你的用户名>/checkin-reminder:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - data:/app/data          # ← 必须挂载持久化存储
+    environment:
+      - ADMIN_PASSWORD=你的强密码
+      - JWT_SECRET=你的随机密钥
+volumes:
+  data:
+```
+
+**方式 2：环境变量方式（平台不支持 volumes 时）**
+
+设置以下环境变量，然后将 `DB_PATH` 指向平台提供的可写路径：
+
+```
+PORT=3000
+ADMIN_PASSWORD=你的强密码
+JWT_SECRET=你的随机密钥
+DB_PATH=/persistent/data/tasks.db    ← 改为平台提供的持久化路径
+```
+
+如果平台不支持任何持久化，服务仍可运行，但数据在重启后会丢失。
+
+### 启动验证
+
+启动后检查日志，确认以下两点：
+
+1. `✅ Admin password synced from env` （hash 写入成功）
+2. `💾 DB:` 路径 + `📁 Storage:` 显示为 `外部挂载`（而非 `容器内部`）
+
+如果看到 `📁 Storage: 容器内部（重启数据会丢失！）`，说明未挂载持久化存储。
+
