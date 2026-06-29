@@ -1,0 +1,123 @@
+import type { Translations } from './zh';
+
+const en: Translations = {
+  common: {
+    appTitle: 'Checkin Reminder',
+    tasks: '{n} tasks',
+    noTasks: 'No tasks yet',
+    noTasksHint: 'Click "+ Add Task" to get started',
+    loading: 'Loading...',
+    login: 'Login',
+    loggingIn: 'Logging in...',
+    logout: 'Logout',
+    password: 'Password',
+    enterPassword: 'Enter admin password',
+    wrongPassword: 'Wrong password, please try again',
+    networkError: 'Login failed, please check your connection',
+    cancel: 'Cancel',
+    close: 'Close',
+    save: 'Save Changes',
+    delete: 'Delete',
+    edit: 'Edit',
+    export: 'Export',
+    import: 'Import',
+    confirm: 'Confirm',
+  },
+  landing: {
+    adminLogin: 'Admin Login',
+    dashboardTitle: 'Task Check-in Dashboard',
+    dashboardSub: 'Real-time monitoring of all check-in tasks to ensure nothing is missed',
+    totalTasks: 'Total',
+    overdue: 'Overdue',
+    dueSoon: 'Due Soon',
+    normal: 'Normal',
+    pending: 'Pending',
+    loginTitle: 'Admin Login',
+    loginHint: 'Log in to manage check-in tasks and view details',
+    footerText: 'Check-in links and notes are hidden · Only admins can view full content',
+  },
+  task: {
+    checkin: 'Check In',
+    checkinFailed: 'Check-in failed',
+    nextCheckin: 'Next Due',
+    lastCheckin: 'Last Check-in',
+    neverCheckin: 'Never',
+    unknown: 'Unknown',
+    daysAgo: '{n} days ago',
+    interval: 'Interval',
+    intervalUnit: 'days',
+    remindBefore: 'Remind',
+    remindBeforeUnit: 'days before',
+    remindDisabled: 'Reminder disabled',
+    quickShare: 'Share',
+    copied: 'Copied',
+    shareFailed: 'Failed to get share link',
+    deleteConfirm: 'Delete "{name}"?',
+    history: 'History',
+    checkinHistory: 'Check-in History',
+    noHistory: 'No records yet',
+    sourceManual: 'Manual',
+    sourceTelegram: 'TG Bot',
+    sourceShare: 'Share Link',
+    notes: 'Notes',
+    name: 'Task Name',
+    nameRequired: 'Task Name *',
+    url: 'Check-in URL',
+    category: 'Category',
+    nextCheckinDate: 'Next Check-in Date (optional)',
+    nextCheckinHint: 'Defaults to 4 days from now',
+    createFailed: 'Failed to create',
+    createSuccess: 'Add Task',
+    updateFailed: 'Failed to update',
+    enableReminder: 'Enable Reminder',
+  },
+  status: {
+    neverSigned: 'Unsigned',
+    overdue: 'Overdue {n}d',
+    daysLeft: '{n}d left',
+    todayDue: 'Due today',
+  },
+  section: {
+    overdueTitle: '🔴 Overdue',
+    dueSoonTitle: '🟡 Due Soon',
+    normalTitle: '🟢 Normal',
+    pendingTitle: '⚪ Pending',
+  },
+  tg: {
+    test: 'Test TG',
+  },
+  disclaimer: {
+    short: '⚠ Personal non-commercial check-in reminder tool for lawful use only. By using this service you agree to our disclaimer.',
+    viewDetail: 'View Details',
+    title: 'Disclaimer',
+    full: `This tool is a personal, non-commercial technical experiment providing check-in task management and reminder services.
+
+1. Users must ensure all managed tasks are lawful. Illegal use is strictly prohibited.
+2. No guarantees are made regarding data permanence, security, or integrity. Please back up important data.
+3. Notification delivery is subject to factors beyond our control (network, service providers) and is not 100% guaranteed.
+4. The tool may suspend or terminate service at any time without prior notice.
+
+By using this tool, you acknowledge and agree to these terms.`,
+  },
+  privacy: {
+    hiddenNotice: 'Check-in links and notes are only visible to admins',
+  },
+  import: {
+    title: '📥 Import Tasks',
+    selectFile: 'Select File',
+    preview: 'Will import {taskCount} tasks, {logCount} check-in records',
+    merge: 'Merge (skip existing)',
+    overwrite: 'Overwrite (clear then import)',
+    importing: 'Importing...',
+    success: 'Import complete: {tasks} tasks, {logs} records',
+    error: 'Import failed, check file format',
+    formatError: 'Invalid file format',
+  },
+  export: {
+    title: '📤 Export Tasks',
+    success: 'Export successful, downloading...',
+    error: 'Export failed',
+  },
+};
+
+export default en;

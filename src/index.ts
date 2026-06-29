@@ -16,6 +16,7 @@ import tasksRouter from './routes/tasks.js';
 import checkinRouter from './routes/checkin.js';
 import shareRouter from './routes/share.js';
 import publicTasksRouter from './routes/publicTasks.js';
+import adminRouter from './routes/admin.js';
 import { processReminders } from './services/reminder.js';
 import { initBot } from './services/telegram.js';
 
@@ -36,6 +37,7 @@ app.use('/api/share', shareRouter);
 app.use('/api/public/tasks', publicTasksRouter);
 app.use('/api/tasks', authMiddleware, tasksRouter);
 app.use('/api/checkin', authMiddleware, checkinRouter);
+app.use('/api', authMiddleware, adminRouter);
 
 app.post('/api/test-tg', authMiddleware, async (_req, res) => {
   const { sendTestMessage } = await import('./services/telegram.js');

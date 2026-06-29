@@ -7,6 +7,9 @@
 - 数据库: SQLite (better-sqlite3)，首次启动自动创建于 `./data/tasks.db`，WAL 模式
 - Telegram Bot 可选，不配 `TG_BOT_TOKEN` 就跳过；配了则支持内联键盘交互
 - 公开首页（LandingPage）：无需登录即可查看任务状态看板
+- 多语言支持：轻量手写 i18n Context，中/英切换，`localStorage` 持久化
+- 免责声明：公开页 + 管理页底部均挂简短声明，点击查看完整版
+- 一键导出/导入：JSON 格式，支持合并/覆盖两种模式
 - 镜像公开推送至 `ghcr.io/alivedou/checkin-reminder:latest`，不含内置密码
 
 ## 关键文件路径
@@ -24,10 +27,12 @@
 | 路由: 分享链接 | `src/routes/share.ts` |
 | 路由: 签到 | `src/routes/checkin.ts` (导出 `doCheckin()` 供 TG Bot 复用) |
 | 路由: 任务 CRUD | `src/routes/tasks.ts` |
+| 路由: 导入导出 | `src/routes/admin.ts` |
 | 前端入口 | `web/src/App.tsx` (未登录→LandingPage，已登录→管理后台) |
 | 公开首页 | `web/src/components/LandingPage.tsx` |
 | 公开任务卡片 | `web/src/components/PublicTaskCard.tsx` |
 | API 客户端 | `web/src/api/client.ts` |
+| 多语言 | `web/src/i18n/zh.ts`, `web/src/i18n/en.ts`, `web/src/i18n/LanguageContext.tsx` |
 
 ## 本地运行
 
