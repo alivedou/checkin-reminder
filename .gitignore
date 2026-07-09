@@ -12,3 +12,7 @@ checkin-reminder.zip
 Thumbs.db
 *.log
 logs/
+checkin.tar.gz
+Dockerfile
+docker-compose.yml
+.github/
