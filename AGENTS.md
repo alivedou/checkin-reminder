@@ -169,6 +169,30 @@ crontab -e
 | `deleteTask(id)` | `/del` 确认删除 |
 | `deleteAllTasks()` | `/delall` 清空 |
 
+### 为什么是 sql.js 而不是 better-sqlite3
+
+CT8 是 FreeBSD 共享主机，没有 gcc 编译器，无法编译安装 better-sqlite3（C++ 原生模块）。
+sql.js 是纯 JS + WASM 实现，零原生依赖，`npm install` 即装即用。
+
+**折衷方案**：`src/db/connection.ts` 把 sql.js 的内存 + 语句式 API 包装成 better-sqlite3 兼容的同步 API：
+
+```typescript
+db.prepare(sql).run(a, b, c)   // 内部调用 stmt.bind().step() + autoSave()
+db.prepare(sql).get(id)        // stmt.step() → getAsObject()
+db.prepare(sql).all()          // while(stmt.step()) push(getAsObject())
+```
+
+所有路由和服务文件无需改动——API 完全一致。
+
+**注意事项**：
+
+| 方面 | 差异 |
+|------|------|
+| 启动 | 需 `await initDb()` 异步加载 WASM（index.ts 已处理） |
+| 存盘 | 每次写入后自动 `export()` + `writeFileSync` 落盘 |
+| 性能 | 略低于原生，个人签到场景可忽略 |
+| 迁移 | 如果换 VPS/Docker，只需换回 better-sqlite3 版 connection.ts 和 package.json，其他文件归零 |
+
 ## 必须遵守的规则
 
 ### TypeScript 配置
