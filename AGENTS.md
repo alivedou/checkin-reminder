@@ -1,67 +1,150 @@
-# Checkin Reminder - AGENTS.md
+# Checkin Reminder CT8 - AGENTS.md
 
-## 项目架构
+## 项目定位
 
-- 根目录: Express.js + TypeScript 后端，入口 `src/index.ts`
-- `web/`: React + Vite + TailwindCSS 前端，构建产物 `web/dist/` 由 Express 作为静态文件托管
-- 数据库: SQLite (better-sqlite3)，首次启动自动创建于 `./data/tasks.db`，WAL 模式
-- Telegram Bot 可选，不配 `TG_BOT_TOKEN` 就跳过；配了则支持内联键盘交互
-- 公开首页（LandingPage）：无需登录即可查看任务状态看板
-- 多语言支持：轻量手写 i18n Context，中/英切换，`localStorage` 持久化
-- 免责声明：公开页 + 管理页底部均挂简短声明，点击查看完整版
-- 一键导出/导入：JSON 格式，支持合并/覆盖两种模式
-- 镜像公开推送至 `ghcr.io/alivedou/checkin-reminder:latest`，不含内置密码
+专为共享主机（ct8 / serv00）优化的签到提醒系统。与 Docker 版共享前端代码，但部署方式、数据库编译、TG Bot 功能有差异化。
+
+## 与 Docker 版差异
+
+| 方面 | Docker 版 | CT8 版 |
+|------|-----------|--------|
+| 部署方式 | Docker / ghcr.io 镜像 | tar + scp + nohup |
+| 进程管理 | Docker restart | crontab 保活 |
+| TG Bot 命令 | 4 按钮菜单 | **8 按钮菜单**（含 /add /del /edit /delall） |
+| TG Bot 命令 | `/due` 全量过滤 | `/due` 30天 + `/due7` 7天 |
+| queries.ts | `getAllTasks` 仅 | 额外 7 个函数：`getTasksDueWithin`、`getTaskById`、`createTask`、`updateTask`、`deleteTask`、`deleteAllTasks` |
+| TG 分享链接 | 支持 getShareUrl | **不支持**（共享主机无公网域名） |
+| 数据库 | better-sqlite3 | better-sqlite3（平台需支持 C++ 编译） |
+| 构建 | `docker build` | 本机 `tsc` + `vite build` → tar → scp |
 
 ## 关键文件路径
 
 | 功能 | 路径 |
 |------|------|
 | 启动入口 + 路由注册 | `src/index.ts` |
-| 环境变量 = 配置 | `src/config.ts` |
+| 环境变量 | `src/config.ts` |
 | 数据库连接 + 迁移 | `src/db/connection.ts`, `src/db/migrate.ts` |
+| 数据库查询（含 TG Bot CRUD） | `src/db/queries.ts` |
 | 密码/JWT | `src/utils/auth.ts` |
-| 认证中间件 | `src/middleware/auth.ts` (JWT 支持 header + query param) |
-| 提醒逻辑 | `src/services/reminder.ts` (限流: 到期前 3次/天，过期后 1次/天×3天，含随机延迟防滥用) |
-| TG Bot | `src/services/telegram.ts` (内联键盘: `/start /list /check /status /due`) |
-| 路由: 公开任务 | `src/routes/publicTasks.ts` (无需认证，去敏) |
-| 路由: 分享链接 | `src/routes/share.ts` |
-| 路由: 签到 | `src/routes/checkin.ts` (导出 `doCheckin()` 供 TG Bot 复用) |
+| 认证中间件 | `src/middleware/auth.ts` |
+| 提醒逻辑 | `src/services/reminder.ts`（限流 + 随机延迟 + try-catch） |
+| **TG Bot（核心）** | `src/services/telegram.ts`（8 按钮 + CRUD + 对话式 /add + 自动重连 + escapeMd） |
+| 路由: 签到 | `src/routes/checkin.ts`（导出 `doCheckin()` 供 TG Bot 复用） |
 | 路由: 任务 CRUD | `src/routes/tasks.ts` |
 | 路由: 导入导出 | `src/routes/admin.ts` |
-| 前端入口 | `web/src/App.tsx` (未登录→LandingPage，已登录→管理后台) |
-| 公开首页 | `web/src/components/LandingPage.tsx` |
-| 公开任务卡片 | `web/src/components/PublicTaskCard.tsx` |
-| API 客户端 | `web/src/api/client.ts` |
+| 前端入口 | `web/src/App.tsx` |
 | 多语言 | `web/src/i18n/zh.ts`, `web/src/i18n/en.ts`, `web/src/i18n/LanguageContext.tsx` |
 
-## 本地运行
+## 本地开发
 
 ```
-cp -n .env.example .env    # 首次
 npm install
 cd web && npm install && npm run build && cd ..
-npm run dev                # tsx watch src/index.ts (后端热重载)
-cd web && npm run dev      # Vite 前端开发服务器 (只开发前端时)
+npm run dev                # tsx watch src/index.ts（热重载）
 ```
 
 ## 验证命令（改完代码必跑）
 
 ```
-npx tsc --outDir dist      # 1. TypeScript 编译检查（零错误才算通过）
+npx tsc --outDir dist      # 1. 编译检查（零错误才算通过）
 cd web && npm run build    # 2. 前端构建
-timeout 8 npm run dev      # 3. 快速启动测试（确认无运行时崩溃）
 ```
 
-## 关键命令
+## 部署流程（首次）
 
-| 命令 | 说明 |
-|------|------|
-| `npm run dev` | 后端开发模式 (tsx watch) |
-| `npm run build` (root) | 编译 TS → `dist/` |
-| `npm run start` | 运行编译后的生产版本 (`node dist/index.js`) |
-| `npm run migrate` | 单独运行数据库迁移 |
-| `cd web && npm run dev` | 前端 Vite 开发服务器 |
-| `cd web && npm run build` | 构建前端到 `web/dist/` |
+```
+# 1. 本机构建
+npm run build                     # TS → dist/
+cd web && npm run build && cd ..  # Vite → web/dist/
+
+# 2. 打包（只上传运行时文件）
+tar czf checkin.tar.gz dist web/dist package.json .env.example
+
+# 3. 上传到服务器
+scp checkin.tar.gz 用户名@s编号.ct8.pl:~/checkin.tar.gz
+
+# 4. 服务器解压 + 安装
+ssh 用户名@s编号.ct8.pl
+mkdir -p ~/checkin && cd ~/checkin
+tar xzf ~/checkin.tar.gz
+cp -n .env.example .env && vi .env  # 改密码 + 端口
+npm install --production
+
+# 5. 启动
+nohup node dist/index.js > app.log 2>&1 &
+cat app.log  # 检查启动日志
+```
+
+## 升级流程（后续更新）
+
+```
+# 本机（改完代码后）
+npm run build && cd web && npm run build && cd ..
+tar czf checkin.tar.gz dist web/dist package.json .env.example
+
+# 上传
+scp checkin.tar.gz 用户名@s编号.ct8.pl:~/checkin.tar.gz
+
+# 服务器
+ssh 用户名@s编号.ct8.pl
+cd ~/checkin
+pkill -f "node dist/index.js"    # 停旧进程
+tar xzf ~/checkin.tar.gz          # 覆盖 dist/ + web/dist/
+npm install --production           # 更新依赖（如无变化可跳过）
+nohup node dist/index.js > app.log 2>&1 &  # 启动
+cat app.log                        # 验证
+```
+
+> `.env` 不动，保留原密码和 token。
+
+## 保活（必配）
+
+```bash
+crontab -e
+```
+
+```cron
+# 每 5 分钟检查进程保活
+*/5 * * * * pgrep -f "node dist/index.js" || (cd ~/checkin && nohup node dist/index.js >> app.log 2>&1 &)
+
+# 每天凌晨 5 点强制重启（双保险）
+0 5 * * * pkill -f "node dist/index.js"; sleep 2; cd ~/checkin && nohup node dist/index.js >> app.log 2>&1 &
+```
+
+## Telegram Bot 架构
+
+### 命令列表
+
+| 命令 | 功能 | 实现函数 |
+|------|------|----------|
+| `/start` | 8 按钮主菜单 | `sendMainMenu` |
+| `/list` | 全部任务列表 | `sendTaskList` |
+| `/due` | 30 天内到期 | `sendDueTasks(chatId, 30)` |
+| `/due7` | 7 天内到期 | `sendDueTasks(chatId, 7)` |
+| `/status` | 全部状态详情 | `sendStatus` |
+| `/check` | 快速签到按钮 | `sendCheckMenu` |
+| `/add` | 对话式创建（5 步） | `startAddTask` + `handleAddStep` |
+| `/edit` | 编辑间隔/提醒天数 | `sendEditMenu` + `handleEditTask` |
+| `/del` | 删除（含确认） | `sendDeleteMenu` + `handleDelete` |
+| `/delall` | 清空全部（二次确认） | `sendDeleteAllConfirm` + `handleDeleteAll` |
+
+### 自动重连
+
+- `polling_error` → `scheduleReconnect()` → 指数退避（5s→10s→20s→40s，上限 60s，409 等 15s）
+- 重连成功后 `reconnectAttempt` 重置为 0
+- 不会在主进程假死
+
+### Markdown 转义
+
+所有 TG 消息中含任务名的 Markdown 文本均经过 `escapeMd()` 转义，防止 `_` `*` `[` 等字符导致 `ETELEGRAM 400` 崩溃。定义在 `telegram.ts:37`，导出供 `reminder.ts` 使用。
+
+## 提醒服务架构
+
+- `src/services/reminder.ts`：cron 9/14/20 触发
+- 批量启动前随机延迟 0-15min
+- 每条消息间隔 0-30s
+- 到期前每天 ≤3 次，过期后每天 ≤1 次×3 天
+- 两个 `sendTelegram` 调用均包了 `try-catch`，不会 unhandled rejection 崩进程
 
 ## 数据库
 
@@ -69,97 +152,51 @@ timeout 8 npm run dev      # 3. 快速启动测试（确认无运行时崩溃）
 
 | 表 | 用途 |
 |------|------|
-| `tasks` | 签到任务 (id, name, url, interval_days, next_checkin, remind_enabled, category, share_token, …) |
-| `checkin_logs` | 签到记录 (task_id → tasks.id, source: manual/telegram/share_link) |
-| `settings` | 键值对存储（当前仅存 admin_password_hash） |
-| `notification_log` | 提醒发送日志 (task_id, type: upcoming/overdue, sent_at)，用于限流判断 |
+| `tasks` | 签到任务 |
+| `checkin_logs` | 签到记录 |
+| `settings` | `admin_password_hash` |
+| `notification_log` | 提醒发送日志（限流判断） |
 
-### 迁移规则
+### queries.ts 函数清单
 
-- `migrate()` 在 `src/index.ts` 启动时自动执行
-- 新增表使用 `CREATE TABLE IF NOT EXISTS`（幂等，不影响已有数据）
-- 新增列使用 `ALTER TABLE ADD COLUMN` + `PRAGMA table_info` 检查是否存在
-- 数据库文件在 `data/` 目录（gitignored），启动时自动创建
+| 函数 | 调用方 |
+|------|--------|
+| `getAllTasks()` | 所有 UI + reminder |
+| `getTasksDueWithin(days)` | `sendDueTasks` |
+| `getTaskById(id)` | `/del` `/edit` 回调 |
+| `createTask(data)` | `/add` 对话流程 |
+| `updateTask(id, data)` | `/edit` 字段修改 |
+| `deleteTask(id)` | `/del` 确认删除 |
+| `deleteAllTasks()` | `/delall` 清空 |
 
 ## 必须遵守的规则
 
 ### TypeScript 配置
 
-- `tsconfig.json` 必须保留 `esModuleInterop: true`，否则 `import express from 'express'` 编译失败
-- `moduleResolution` 和 `module` 已设为 `node16`/`Node16`，**不要再改回 `node`**
-- 本地 `.ts` 文件之间的 import 必须使用 `.js` 扩展名（如 `import { config } from './config.js'`）
+- `esModuleInterop: true` — 不写则 `import express from 'express'` 编译失败
+- `moduleResolution: node16` + `module: Node16` — TS 7 兼容
+- 本地 `.ts` 文件互引必须使用 `.js` 扩展名
 
-### Dockerfile
+### Telegram Bot
 
-- 层内命令链必须用 `&&`，**不要用 `\&\&`**（反斜杠转义会导致 shell 行为异常，构建失败）
-- 生产阶段只有 `npm ci --omit=dev`，不含 `tsx` 或 `typescript`
+- 所有消息包含动态内容（任务名、用户名）必须 `escapeMd()` 转义
+- `queries.ts` 的 7 个额外函数是 TG Bot CRUD 的依赖，**不能删**
+- ct8 版不含 `getShareUrl`，不要给 `/list`/`/status` 加分享链接按钮
 
-### 环境变量
+### 提醒服务
 
-- `config.ts` 读取 `process.env.XXX`，`||` 后为默认值
-- 部署时**必须设置 `ADMIN_PASSWORD` 和 `JWT_SECRET`**，否则用默认值 `admin123` 和随机密钥
-- `JWT_SECRET` 如果是随机生成，每次重启都会变化，已登录用户全部掉线
-- `.env` 文件 gitignored，仅本地开发使用；Docker 镜像不内置 `.env`
+- `sendTelegram` 的每个调用点必须 try-catch，防止 unhandled rejection 崩进程
+- 随机延迟参数不要调到 0（防外呼封号）
 
-### 启动校验
+### 部署
 
-- 启动后 `ensureAdminHash()` 将密码写入 DB，然后 `verifyPassword()` 回读验证
-- 如果回读失败（DB 不可写），打印错误并继续运行（不会崩溃，但登录将 401）
-- 日志输出 `📁 Storage: 外部挂载` 或 `容器内部`，用于判断持久化是否生效
-
-## Docker 构建
-
-### 本地构建
-
-```bash
-docker build -t checkin-reminder .
-```
-
-### GitHub Actions 构建
-
-- `.github/workflows/docker-build.yml` — 手动触发
-- 多架构: `linux/amd64, linux/arm64`
-- 推送到 `ghcr.io/alivedou/checkin-reminder:latest` + `:sha`
-- 镜像为公开，**不内置密码**（用户部署时设环境变量）
-
-## 部署要点
-
-### 最低要求
-
-1. 挂载持久化卷到 `/app/data`（否则重启数据丢失 + 401）
-2. 设置环境变量 `ADMIN_PASSWORD` 和 `JWT_SECRET`
-3. 暴露端口 3000
-
-### 启动后验证
-
-日志应出现以下行：
-
-```
-✅ Database migrated
-✅ Admin password synced from env
-📁 Storage:     外部挂载          ← 非"容器内部"
-📱 TG:          已配置 / 未配置
-```
-
-如果缺少 `Admin password synced` 或 `Storage: 容器内部` → 存储未正确挂载。
-
-### 环境变量优先级
-
-`运行时 env > config.ts 默认值 > 无`
-
-容器平台设置的环境变量会覆盖 `config.ts` 的硬编码默认值。
-
-## Telegram Bot 架构
-
-- `initBot()` 在 `src/index.ts` 启动时调用
-- 支持命令: `/start` (主菜单), `/list`, `/status`, `/check`, `/due`
-- 内联键盘交互: callback_data 格式为 `menu:xxx` 或 `check:taskId`
-- 签到复用 `doCheckin(taskId, 'telegram')`（定义在 `src/routes/checkin.ts`）
-- 分享链接功能依赖 `BASE_URL` 和 `share_token`，TG 内生成 `url` 按钮
+- 服务器用 `nohup node dist/index.js &` 启动，**不是** Docker
+- 升级时必须 `pkill` 再启动，否则端口冲突
+- 部署文件只有 `dist/` `web/dist/` `package.json` `.env.example`
 
 ## 注意事项
 
-- `.env` 是 gitignored；`.env.example` 是模板
-- `data/` 目录是 gitignored；代码启动时会自动创建
-- `list.md` 是功能规划文档，非项目运行必需
-- `scripts/backup.sh` 和 `scripts/restore.sh` 用于 SQLite 数据备份恢复
+- `.env` gitignored，服务器手动维护
+- `data/` gitignored，`.db` 备份用 `scripts/backup.sh`
+- `checkin.tar.gz` 是构建产物，不要提交到 git
+- TG Bot 仅响应 `TG_CHAT_ID` 主人的 private chat（`sendTelegram` 限定）
