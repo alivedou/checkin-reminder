@@ -1,5 +1,5 @@
 import { getAllTasks } from '../db/queries.js';
-import { sendTelegram } from './telegram.js';
+import { sendTelegram, escapeMd } from './telegram.js';
 import db from '../db/connection.js';
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -63,11 +63,13 @@ export async function processReminders() {
       // Random delay between messages to avoid bulk-sending pattern
       if (sent > 0) await sleep(rand(PER_MSG_DELAY_MIN, PER_MSG_DELAY_MAX) * 1000);
 
-      await sendTelegram(
-        `🔴 **${task.name}** 已过期 ${daysOverdue} 天！\n请立即签到。`
-      );
-      logNotification(task.id, 'overdue');
-      sent++;
+      try {
+        await sendTelegram(
+          `🔴 **${escapeMd(task.name)}** 已过期 ${daysOverdue} 天！\n请立即签到。`
+        );
+        logNotification(task.id, 'overdue');
+        sent++;
+      } catch (err: any) { console.error('❌ Reminder send failed:', err.message); }
 
     } else if (diff <= task.remind_days_before) {
       // === 即将到期：每天3次 ===
@@ -78,11 +80,13 @@ export async function processReminders() {
       if (sent > 0) await sleep(rand(PER_MSG_DELAY_MIN, PER_MSG_DELAY_MAX) * 1000);
 
       const urgency = diff <= 1 ? '🟠' : '🟡';
-      await sendTelegram(
-        `${urgency} **${task.name}** 还剩 ${diff} 天到期\n下次签到：${new Date(task.next_checkin).toLocaleDateString('zh-CN')}`
-      );
-      logNotification(task.id, 'upcoming');
-      sent++;
+      try {
+        await sendTelegram(
+          `${urgency} **${escapeMd(task.name)}** 还剩 ${diff} 天到期\n下次签到：${new Date(task.next_checkin).toLocaleDateString('zh-CN')}`
+        );
+        logNotification(task.id, 'upcoming');
+        sent++;
+      } catch (err: any) { console.error('❌ Reminder send failed:', err.message); }
     }
   }
 

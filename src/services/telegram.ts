@@ -33,6 +33,10 @@ function getDaysText(task: any): string {
   return `还剩${task.days_until}天`;
 }
 
+export function escapeMd(text: string): string {
+  return text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+}
+
 function scheduleReconnect(reason: string) {
   if (reconnectTimer) return;
   const isConflict = reason.includes('409') || reason.toLowerCase().includes('conflict');
@@ -108,7 +112,7 @@ function wireHandlers(b: TelegramBot) {
       const taskId = data.slice(6);
       const result = doCheckin(taskId, 'telegram');
       if (result.ok) {
-        b.editMessageText(`✅ **${result.taskName}** 已签到\n下次到期：${formatDate(result.nextCheckin ?? null)}`, {
+          b.editMessageText(`✅ **${escapeMd(result.taskName ?? '')}** 已签到\n下次到期：${formatDate(result.nextCheckin ?? null)}`, {
           chat_id: chatId,
           message_id: query.message!.message_id!,
           parse_mode: 'Markdown',
@@ -142,7 +146,7 @@ function sendTaskList(chatId: number) {
   const lines = tasks.map((t: any) => {
     const emoji = getStatusEmoji(t);
     const days = getDaysText(t);
-    return `${emoji} **${t.name}** — ${days}`;
+    return `${emoji} **${escapeMd(t.name)}** — ${days}`;
   });
 
   const buttons: InlineButton[][] = tasks.map((t: any) => {
@@ -179,7 +183,7 @@ function sendStatus(chatId: number) {
     text += '🔴 **已过期：**\n';
     over.forEach((t: any) => {
       const days = Math.abs(t.days_until);
-      text += `• ${t.name} — 过期${days}天 | 下次：${formatDate(t.next_checkin)}\n`;
+      text += `• ${escapeMd(t.name)} — 过期${days}天 | 下次：${formatDate(t.next_checkin)}\n`;
       if (t.share_token) buttons.push([{ text: `🔴 签到 ${t.name}`, url: getShareUrl(t.id, t.share_token) }]);
     });
     text += '\n';
@@ -189,7 +193,7 @@ function sendStatus(chatId: number) {
     text += '🟡 **即将到期：**\n';
     warn.forEach((t: any) => {
       const days = t.days_until === 0 ? '今天' : `${t.days_until}天后`;
-      text += `• ${t.name} — ${days}到期 | 下次：${formatDate(t.next_checkin)}\n`;
+      text += `• ${escapeMd(t.name)} — ${days}到期 | 下次：${formatDate(t.next_checkin)}\n`;
       if (t.share_token) buttons.push([{ text: `🟡 签到 ${t.name}`, url: getShareUrl(t.id, t.share_token) }]);
     });
     text += '\n';
@@ -199,7 +203,7 @@ function sendStatus(chatId: number) {
     text += '🟢 **状态正常：**\n';
     ok.forEach((t: any) => {
       const days = t.days_until === null ? '未签到' : `${t.days_until}天后`;
-      text += `• ${t.name} — ${days}到期\n`;
+      text += `• ${escapeMd(t.name)} — ${days}到期\n`;
     });
   }
 
@@ -243,7 +247,7 @@ function sendDueTasks(chatId: number) {
   dueTasks.forEach((t: any) => {
     const emoji = getStatusEmoji(t);
     const days = getDaysText(t);
-    text += `${emoji} **${t.name}** — ${days}\n`;
+    text += `${emoji} **${escapeMd(t.name)}** — ${days}\n`;
     text += `   下次签到：${formatDate(t.next_checkin)}\n\n`;
     if (t.share_token) buttons.push([{ text: `${emoji} 签到 ${t.name}`, url: getShareUrl(t.id, t.share_token) }]);
   });
