@@ -1,0 +1,31 @@
+declare module 'sql.js' {
+  interface SqlJsStatic {
+    Database: new (data?: Buffer | Uint8Array | null) => Database;
+  }
+
+  interface Database {
+    run(sql: string, params?: any[]): void;
+    exec(sql: string): QueryExecResult[];
+    prepare(sql: string): Statement;
+    export(): Uint8Array;
+    close(): void;
+    getRowsModified(): number;
+  }
+
+  interface Statement {
+    bind(params?: any[]): boolean;
+    step(): boolean;
+    getAsObject(): Record<string, any>;
+    get(): any[];
+    free(): boolean;
+    reset(): void;
+  }
+
+  interface QueryExecResult {
+    columns: string[];
+    values: any[][];
+  }
+
+  function initSqlJs(config?: { locateFile?: (file: string) => string }): Promise<SqlJsStatic>;
+  export default initSqlJs;
+}
