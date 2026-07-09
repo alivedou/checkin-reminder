@@ -4,6 +4,8 @@ import { getAllTasks } from '../db/queries.js';
 import { doCheckin } from '../routes/checkin.js';
 
 let bot: TelegramBot | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempt = 0;
 
 type InlineButton = { text: string; url?: string; callback_data?: string };
 
@@ -31,68 +33,92 @@ function getDaysText(task: any): string {
   return `还剩${task.days_until}天`;
 }
 
-export function initBot() {
-  if (!config.tgBotToken) { console.log('⚠️ TG_BOT_TOKEN not set, Telegram disabled'); return; }
+function scheduleReconnect(reason: string) {
+  if (reconnectTimer) return;
+  const isConflict = reason.includes('409') || reason.toLowerCase().includes('conflict');
+  const delay = isConflict
+    ? 15000
+    : Math.min(60000, 5000 * Math.pow(2, Math.min(reconnectAttempt, 3)));
+  console.error(`⚠️ TG polling 异常: ${reason}`);
+  console.error(`🔄 ${delay / 1000}s 后自动重连 (attempt ${reconnectAttempt + 1})`);
+  try { bot?.stopPolling(); } catch { /* ignore */ }
+  bot = null;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    reconnectAttempt += 1;
+    startBot();
+  }, delay);
+}
+
+function startBot() {
+  if (!config.tgBotToken) return;
   try {
+    try { bot?.stopPolling(); } catch { /* ignore */ }
     bot = new TelegramBot(config.tgBotToken, { polling: true });
-    bot.on('polling_error', (err: any) => {
-      if (err.code === 'EFATALERROR' || err.message?.includes('409')) {
-        console.error('❌ TG Bot token invalid or conflict, disabling polling');
-        bot?.stopPolling();
-        bot = null;
-      }
-    });
-
-    bot.onText(/\/start/, (msg: TelegramBot.Message) => {
-      bot!.sendMessage(msg.chat.id, '👋 **签到提醒 Bot**\n\n选择功能：', {
-        parse_mode: 'Markdown',
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: '📋 任务列表', callback_data: 'menu:list' }, { text: '⏰ 即将到期', callback_data: 'menu:due' }] as InlineButton[],
-            [{ text: '✅ 快速签到', callback_data: 'menu:check' }, { text: '📊 全部状态', callback_data: 'menu:status' }] as InlineButton[],
-          ]
-        }
-      });
-    });
-
-    bot.onText(/\/list/, (msg: TelegramBot.Message) => sendTaskList(msg.chat.id));
-    bot.onText(/\/status/, (msg: TelegramBot.Message) => sendStatus(msg.chat.id));
-    bot.onText(/\/check/, (msg: TelegramBot.Message) => sendCheckMenu(msg.chat.id));
-    bot.onText(/\/due/, (msg: TelegramBot.Message) => sendDueTasks(msg.chat.id));
-
-    bot.on('callback_query', (query: any) => {
-      const data = query.data as string;
-      const chatId = query.message?.chat.id;
-      if (!data || !chatId) return;
-
-      bot!.answerCallbackQuery(query.id);
-
-      if (data === 'menu:list') return sendTaskList(chatId);
-      if (data === 'menu:status') return sendStatus(chatId);
-      if (data === 'menu:check') return sendCheckMenu(chatId);
-      if (data === 'menu:due') return sendDueTasks(chatId);
-      if (data === 'menu:home') return sendMainMenu(chatId);
-
-      if (data.startsWith('check:')) {
-        const taskId = data.slice(6);
-        const result = doCheckin(taskId, 'telegram');
-        if (result.ok) {
-          bot!.editMessageText(`✅ **${result.taskName}** 已签到\n下次到期：${formatDate(result.nextCheckin ?? null)}`, {
-            chat_id: chatId,
-            message_id: query.message!.message_id!,
-            parse_mode: 'Markdown',
-            reply_markup: { inline_keyboard: [[{ text: '🔙 返回', callback_data: 'menu:check' }] as InlineButton[]] }
-          });
-        } else {
-          bot!.answerCallbackQuery(query.id, { text: '❌ 签到失败', show_alert: true });
-        }
-      }
-    });
-
+    wireHandlers(bot);
+    reconnectAttempt = 0;
     console.log('✅ Telegram bot started');
   } catch (err: any) {
     console.error('❌ Telegram bot init failed:', err.message);
+    scheduleReconnect(err.message || 'init failed');
   }
+}
+
+export function initBot() {
+  if (!config.tgBotToken) { console.log('⚠️ TG_BOT_TOKEN not set, Telegram disabled'); return; }
+  startBot();
+}
+
+function wireHandlers(b: TelegramBot) {
+  b.on('polling_error', (err: any) => {
+    scheduleReconnect(err?.message || String(err));
+  });
+
+  b.onText(/\/start/, (msg: TelegramBot.Message) => {
+    b.sendMessage(msg.chat.id, '👋 **签到提醒 Bot**\n\n选择功能：', {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '📋 任务列表', callback_data: 'menu:list' }, { text: '⏰ 即将到期', callback_data: 'menu:due' }] as InlineButton[],
+          [{ text: '✅ 快速签到', callback_data: 'menu:check' }, { text: '📊 全部状态', callback_data: 'menu:status' }] as InlineButton[],
+        ]
+      }
+    });
+  });
+
+  b.onText(/\/list/, (msg: TelegramBot.Message) => sendTaskList(msg.chat.id));
+  b.onText(/\/status/, (msg: TelegramBot.Message) => sendStatus(msg.chat.id));
+  b.onText(/\/check/, (msg: TelegramBot.Message) => sendCheckMenu(msg.chat.id));
+  b.onText(/\/due/, (msg: TelegramBot.Message) => sendDueTasks(msg.chat.id));
+
+  b.on('callback_query', (query: any) => {
+    const data = query.data as string;
+    const chatId = query.message?.chat.id;
+    if (!data || !chatId) return;
+
+    b.answerCallbackQuery(query.id);
+
+    if (data === 'menu:list') return sendTaskList(chatId);
+    if (data === 'menu:status') return sendStatus(chatId);
+    if (data === 'menu:check') return sendCheckMenu(chatId);
+    if (data === 'menu:due') return sendDueTasks(chatId);
+    if (data === 'menu:home') return sendMainMenu(chatId);
+
+    if (data.startsWith('check:')) {
+      const taskId = data.slice(6);
+      const result = doCheckin(taskId, 'telegram');
+      if (result.ok) {
+        b.editMessageText(`✅ **${result.taskName}** 已签到\n下次到期：${formatDate(result.nextCheckin ?? null)}`, {
+          chat_id: chatId,
+          message_id: query.message!.message_id!,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: [[{ text: '🔙 返回', callback_data: 'menu:check' }] as InlineButton[]] }
+        });
+      } else {
+        b.answerCallbackQuery(query.id, { text: '❌ 签到失败', show_alert: true });
+      }
+    }
+  });
 }
 
 function sendMainMenu(chatId: number) {
