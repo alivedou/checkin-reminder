@@ -1,4 +1,5 @@
 import db from './connection.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export function getAllTasks() {
   const tasks = db.prepare('SELECT * FROM tasks ORDER BY next_checkin ASC').all() as any[];
@@ -24,7 +25,6 @@ export function getTaskById(id: string) {
 }
 
 export function createTask(data: { name: string; interval_days?: number; remind_days_before?: number; url?: string; next_checkin?: string }) {
-  const { v4: uuidv4 } = require('uuid');
   const id = uuidv4();
   const now = new Date().toISOString();
   const interval = data.interval_days || 14;
